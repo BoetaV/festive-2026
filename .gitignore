@@ -1,0 +1,30 @@
+# ---- Data: never commit (database backups hold user accounts and patient-style records)
+_archive_2025_data/
+*.dump
+*.sqlite3
+*.db
+
+# ---- Secrets / local settings
+.env
+.env.local
+.env.*.local
+
+# ---- Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# ---- Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# ---- Generated
+_archive_2025_django/staticfiles/
+
+# ---- Tooling
+.playwright-mcp/
+.vscode/
+.idea/

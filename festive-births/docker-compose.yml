@@ -1,0 +1,51 @@
+# Festive Births 2026: full stack in Docker.
+#   docker compose up -d --build      -> Postgres + API + web  (http://localhost:3010)
+#   docker compose up -d db           -> just Postgres, if you run backend/frontend natively with hot reload
+#   docker compose down               -> stop (data is kept in the pgdata volume)
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: festive
+      POSTGRES_PASSWORD: festive
+      POSTGRES_DB: festive
+    ports:
+      - "5445:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U festive"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://festive:festive@db:5432/festive
+      SECRET_KEY: local-docker-secret-key-change-me-0123456789
+      # First superuser; starts on DEFAULT_PASSWORD and must change it at first sign-in.
+      SUPERUSER_PERSAL: "00000001"
+      DEFAULT_PASSWORD: Password1
+      REPORT_DATES: '["2026-12-25","2027-01-01"]'
+      CORS_ORIGINS: '["http://localhost:3010"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8010:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "3010:3000"
+
+volumes:
+  pgdata:

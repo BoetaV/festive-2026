@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  /* ECDoH brand (from the "Milestone achieved" campaign artwork) */
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-ring: var(--brand-ring);
+  --color-brand-blue: var(--brand-blue);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-status-good: var(--status-good);
+  --color-status-warning: var(--status-warning);
+  --color-status-serious: var(--status-serious);
+  --color-status-critical: var(--status-critical);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* ---- ECDoH brand ---- */
+  --gold: #f2b705;            /* campaign gold: bands, pills, rings */
+  --gold-foreground: #0c3b27; /* deep green ink on gold */
+  --brand-deep: #0c3b27;      /* "WELL DONE" deep green, headings */
+  --brand-ring: #0f7e45;      /* lighter green of the decorative rings */
+  --brand-blue: #2a5ca8;      /* "FACILITIES" label blue */
+
+  --background: #f6f8f5;
+  --foreground: #10261b;
+  --card: #ffffff;
+  --card-foreground: #10261b;
+  --popover: #ffffff;
+  --popover-foreground: #10261b;
+  --primary: #0b6b3b;         /* ECDoH green */
+  --primary-foreground: #ffffff;
+  --secondary: #e8f2ec;
+  --secondary-foreground: #0c3b27;
+  --muted: #eef3ef;
+  --muted-foreground: #4f6157;
+  --accent: #e8f2ec;
+  --accent-foreground: #0c3b27;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #dbe4dd;
+  --input: #cfdad2;
+  --ring: #0b6b3b;
+  /* Series colours - validated with the dataviz palette checker against the light card.
+     Gold sits under 3:1 on white, so every chart keeps its legend and table view. */
+  --chart-1: #0b6b3b; /* ECDoH green - Male / primary series */
+  --chart-2: #d9a300; /* ECDoH gold  - Female */
+  --chart-3: #2a5ca8; /* brand blue */
+  --chart-4: #1baf7a;
+  --chart-5: #4a3aa7;
+  /* Reserved status colours - always paired with icon + label */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #10261b;
+  --sidebar-primary: #0b6b3b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e8f2ec;
+  --sidebar-accent-foreground: #0c3b27;
+  --sidebar-border: #dbe4dd;
+  --sidebar-ring: #0b6b3b;
+}
+
+.dark {
+  --gold: #f2b705;
+  --gold-foreground: #0c3b27;
+  --brand-deep: #e9f3ec;
+  --brand-ring: #145c36;
+  --brand-blue: #8fb3ec;
+
+  --background: #0b1c14;
+  --foreground: #eaf3ed;
+  --card: #132a1f;
+  --card-foreground: #eaf3ed;
+  --popover: #132a1f;
+  --popover-foreground: #eaf3ed;
+  --primary: #1f8a4f;
+  --primary-foreground: #ffffff;
+  --secondary: #1b3428;
+  --secondary-foreground: #eaf3ed;
+  --muted: #1b3428;
+  --muted-foreground: #9db5a7;
+  --accent: #1b3428;
+  --accent-foreground: #eaf3ed;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 15%);
+  --ring: #f2b705;
+  /* Dark steps validated against the #132a1f card (all checks pass) */
+  --chart-1: #1d7f47;
+  --chart-2: #bd8b00;
+  --chart-3: #6f9ae0;
+  --chart-4: #199e70;
+  --chart-5: #9085e9;
+  --sidebar: #132a1f;
+  --sidebar-foreground: #eaf3ed;
+  --sidebar-primary: #1f8a4f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1b3428;
+  --sidebar-accent-foreground: #eaf3ed;
+  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar-ring: #f2b705;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Campaign-style eyebrow: gold, heavy, widely tracked capitals ("MILESTONE ACHIEVED"). */
+  .eyebrow {
+    @apply text-xs font-extrabold tracking-[0.22em] uppercase;
+  }
+  /* Decorative ring used on green bands (the overlapping circles in the artwork). */
+  .brand-ring {
+    @apply pointer-events-none absolute rounded-full border-brand-ring;
+  }
+}
