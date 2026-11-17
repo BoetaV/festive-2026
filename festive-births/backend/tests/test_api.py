@@ -250,3 +250,53 @@ def test_only_25_december_and_1_january_are_reporting_days(client):
     assert client.get("/api/meta").json()["report_dates"] == ["2026-12-25", "2027-01-01"]
     assert client.post("/api/deliveries", json={**BIRTH, "report_date": "2026-12-26"}).status_code == 422
     assert client.post("/api/deliveries", json={**BIRTH, "report_date": "2026-12-25"}).status_code == 201
+
+
+# ------------------------------------------------------------------ manual submission form
+def test_manual_form_scoping_and_validation(client, monkeypatch):
+    import app.routers.reports as reports
+    seen = {}
+    real = reports.manual_form_pdf
+    monkeypatch.setattr(reports, "manual_form_pdf", lambda **kw: seen.update(kw) or real(**kw))
+
+    make_user("11111111", Role.user, **FACILITY)
+    login(client, "11111111")  # facility user asking for another facility still gets their own
+    r = client.get("/api/reports/manual-form", params={"district": "OR Tambo DM", "facility": "St Barnabas Hospital",
+                                                        "report_date": "2026-12-25"})
+    assert r.status_code == 200 and r.content[:4] == b"%PDF"
+    assert seen["facility"] == "Butterworth Hospital" and seen["district"] == "Amathole DM"
+    assert "Butterworth-Hospital_2026-12-25" in r.headers["content-disposition"]
+    assert client.get("/api/reports/manual-form", params={"report_date": "2026-12-26"}).status_code == 422
+
+    make_user("22222222", Role.admin, district="Amathole DM")
+    login(client, "22222222")
+    assert client.get("/api/reports/manual-form", params={"district": "OR Tambo DM"}).status_code == 403
+    r = client.get("/api/reports/manual-form", params={"facility": "Butterworth Hospital"})
+    assert r.status_code == 200 and seen["local_municipality"] == "Mnquma LM"  # filled in from the facility
+
+    make_user("33333333", Role.superuser)
+    login(client, "33333333")
+    r = client.get("/api/reports/manual-form", params={"rows": 10})  # completely blank form
+    assert r.status_code == 200 and seen["facility"] is None and seen["rows"] == 10
+    assert client.get("/api/reports/manual-form", params={"rows": 5}).status_code == 422
+
+
+def test_birth_notification_forms(client, monkeypatch):
+    import app.routers.reports as reports
+    seen = {}
+    real = reports.birth_form_pdf
+    monkeypatch.setattr(reports, "birth_form_pdf", lambda **kw: seen.update(kw) or real(**kw))
+
+    make_user("11111111", Role.user, **FACILITY)
+    login(client, "11111111")
+    r = client.get("/api/reports/birth-form", params={"facility": "St Barnabas Hospital", "copies": 3,
+                                                       "report_date": "2027-01-01"})
+    assert r.status_code == 200 and r.content[:4] == b"%PDF"
+    assert seen["facility"] == "Butterworth Hospital" and seen["copies"] == 3  # own facility enforced
+    assert 'birth_notification_forms_Butterworth-Hospital_2027-01-01.pdf' in r.headers["content-disposition"]
+    assert client.get("/api/reports/birth-form", params={"copies": 0}).status_code == 422
+    assert client.get("/api/reports/birth-form", params={"report_date": "2026-12-26"}).status_code == 422
+
+    make_user("22222222", Role.admin, district="Amathole DM")
+    login(client, "22222222")
+    assert client.get("/api/reports/birth-form", params={"district": "OR Tambo DM"}).status_code == 403

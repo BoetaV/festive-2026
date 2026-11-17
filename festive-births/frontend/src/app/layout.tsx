@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Montserrat } from "next/font/google"
 import { Providers } from "@/components/providers"
 import "./globals.css"
@@ -10,7 +10,12 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: { default: "Festive Births 2026", template: "%s · Festive Births 2026" },
   description: "Eastern Cape Department of Health – festive season births dashboard and capture system.",
+  applicationName: "Festive Births",
+  appleWebApp: { title: "Festive Births", capable: true, statusBarStyle: "default" },
 }
+
+// Colours the browser/installed-app title bar ECDoH green.
+export const viewport: Viewport = { themeColor: "#0b6b3b" }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
