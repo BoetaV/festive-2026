@@ -4,7 +4,7 @@ import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "sonner"
 import {
-  CopyIcon, DownloadIcon, KeyRoundIcon, LockIcon, LockOpenIcon, LogOutIcon, MoreHorizontalIcon, PencilIcon,
+  CopyIcon, DownloadIcon, FileSignatureIcon, KeyRoundIcon, LockIcon, LockOpenIcon, LogOutIcon, MoreHorizontalIcon, PencilIcon,
   PlusIcon, SearchIcon, Trash2Icon,
 } from "lucide-react"
 import {
@@ -221,6 +221,9 @@ export default function UsersPage() {
                 <DownloadIcon /> Excel
               </Button>
             )}
+            <Button variant="outline" onClick={() => download("/api/users/application-form", "user_account_application_form.pdf").catch(() => toast.error("Download failed"))}>
+              <FileSignatureIcon /> Application form
+            </Button>
             <Button onClick={() => setDialog({ open: true, editing: null })}><PlusIcon /> New user</Button>
           </>
         }

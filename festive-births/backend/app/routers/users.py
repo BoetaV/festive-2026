@@ -10,6 +10,7 @@ from ..security import (
     MANAGEABLE_ROLES, audit, can_manage_user, generate_temp_password, hash_password, require_roles, user_manager,
 )
 from ..services.exports import XLSX_MIME, users_xlsx
+from ..services.user_form import user_application_pdf
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -81,6 +82,15 @@ def export_users(request: Request, db: Session = Depends(get_db),
     db.commit()
     return Response(content, media_type=XLSX_MIME,
                     headers={"Content-Disposition": 'attachment; filename="user_list_report.xlsx"'})
+
+
+@router.get("/application-form")
+def application_form(request: Request, db: Session = Depends(get_db), actor: User = Depends(user_manager)):
+    """Blank facility user account application, signed by the applicant and their supervisor."""
+    audit(db, request, "export_user_application_form", user=actor)
+    db.commit()
+    return Response(user_application_pdf(), media_type="application/pdf",
+                    headers={"Content-Disposition": 'attachment; filename="user_account_application_form.pdf"'})
 
 
 @router.post("", response_model=UserCreated, status_code=201)

@@ -300,3 +300,16 @@ def test_birth_notification_forms(client, monkeypatch):
     make_user("22222222", Role.admin, district="Amathole DM")
     login(client, "22222222")
     assert client.get("/api/reports/birth-form", params={"district": "OR Tambo DM"}).status_code == 403
+
+
+def test_user_application_form(client):
+    make_user("11111111", Role.user, **FACILITY)
+    login(client, "11111111")
+    assert client.get("/api/users/application-form").status_code == 403  # facility users cannot
+
+    make_user("22222222", Role.admin, district="Amathole DM")
+    login(client, "22222222")
+    r = client.get("/api/users/application-form")
+    assert r.status_code == 200 and r.content[:4] == b"%PDF"
+    assert "user_account_application_form.pdf" in r.headers["content-disposition"]
+    assert b"Amathole" not in r.content and b"22222222" not in r.content  # nothing pre-filled
