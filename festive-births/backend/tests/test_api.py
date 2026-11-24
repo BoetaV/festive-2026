@@ -185,9 +185,10 @@ def test_admin_creates_facility_user_with_default_password_in_own_district(clien
     assert r.status_code == 422
 
 
-def test_province_creates_district_users_only(client):
+def test_province_creates_and_resets_district_and_facility_users(client):
     make_user("33333333", Role.province)
     make_user("11111111", Role.user, **FACILITY)
+    make_user("77777777", Role.superuser)
     login(client, "33333333")
     district = {"first_name": "Dist", "last_name": "Coord", "persal_number": "44444444", "role": "admin",
                 "district": "Amathole DM"}
@@ -196,24 +197,36 @@ def test_province_creates_district_users_only(client):
     assert r.json()["temporary_password"] == "Password1"
 
     facility = {**district, "persal_number": "55555555", "role": "user", **FACILITY}
-    assert client.post("/api/users", json=facility).status_code == 422
+    r2 = client.post("/api/users", json=facility)
+    assert r2.status_code == 201, r2.text
     assert client.post("/api/users", json={**district, "persal_number": "66666666",
                                            "role": "superuser"}).status_code == 422
-    listed = client.get("/api/users").json()["items"]
-    assert {u["persal_number"] for u in listed} == {"44444444"}  # facility users not listed
+    listed = {u["persal_number"] for u in client.get("/api/users").json()["items"]}
+    assert listed == {"11111111", "44444444", "55555555"}  # not the superuser
 
-    new_id = r.json()["user"]["id"]
-    assert client.post(f"/api/users/{new_id}/reset-password").json()["temporary_password"] == "Password1"
+    for uid in (r.json()["user"]["id"], r2.json()["user"]["id"]):
+        assert client.post(f"/api/users/{uid}/reset-password").json()["temporary_password"] == "Password1"
 
 
-def test_district_cannot_touch_other_districts_or_district_users(client):
+def test_district_sees_district_users_read_only(client):
     make_user("12345678", Role.admin, district="Amathole DM")
     make_user("22222222", Role.admin, district="OR Tambo DM")
     make_user("33333333", Role.user, district="OR Tambo DM", local_municipality="Nyandeni LM",
               facility="St Barnabas Hospital")
+    make_user("44444444", Role.province)
     login(client, "12345678")
-    assert client.get("/api/users").json()["total"] == 0
-    for uid in (2, 3):
+    listed = {u["persal_number"]: u["id"] for u in client.get("/api/users").json()["items"]}
+    assert set(listed) == {"12345678", "22222222"}  # district users only, no other district's facility users
+    other = listed["22222222"]
+    assert client.post(f"/api/users/{other}/reset-password").status_code == 404
+    body = {"first_name": "Xolani", "last_name": "Y", "persal_number": "22222222", "role": "admin",
+            "district": "OR Tambo DM", "email": "", "title": "", "designation": "", "mobile_number": "",
+            "local_municipality": "", "facility": "", "is_active": True}
+    r = client.put(f"/api/users/{other}", json=body)
+    assert r.status_code == 404, r.text
+    assert client.delete(f"/api/users/{other}").status_code == 404
+    assert client.post(f"/api/users/{listed['12345678']}/reset-password").status_code == 404  # not even own account
+    for uid in (3, 4):
         assert client.post(f"/api/users/{uid}/reset-password").status_code == 404
 
 
@@ -313,3 +326,44 @@ def test_user_application_form(client):
     assert r.status_code == 200 and r.content[:4] == b"%PDF"
     assert "user_account_application_form.pdf" in r.headers["content-disposition"]
     assert b"Amathole" not in r.content and b"22222222" not in r.content  # nothing pre-filled
+
+
+def test_reporting_compliance_per_time_slot(client):
+    from datetime import datetime
+
+    from app.db import SessionLocal
+    from app.services.reporting import SAST, compute_reporting, default_report_date
+
+    make_user("11111111", Role.user, **FACILITY)
+    login(client, "11111111")
+    assert client.post("/api/deliveries", json=BIRTH).status_code == 201  # 03:15 -> first slot
+    nil = {"report_date": "2027-01-01", "no_births_to_report": True, "time_slot": "06:01 - 12:00"}
+    assert client.post("/api/deliveries", json=nil).status_code == 201
+
+    # Mid-afternoon on 1 Jan: slots 1-2 are due, slot 3 is still running, slot 4 has not started.
+    with SessionLocal() as db:
+        r = compute_reporting(db, datetime(2027, 1, 1).date(), district="Amathole DM",
+                              now=datetime(2027, 1, 1, 15, 0, tzinfo=SAST))
+    muni = next(m for m in r["districts"][0]["municipalities"] if m["name"] == "Mnquma LM")
+    fac = next(f for f in muni["facilities"] if f["name"] == "Butterworth Hospital")
+    assert [c["status"] for c in fac["slots"]] == ["births", "nil", "pending", "pending"]
+    assert fac["slots"][0]["births"] == 1 and fac["outstanding"] == 0
+    others = r["districts"][0]["facility_count"] - 1
+    assert r["totals"][0] == {"births": 1, "nil": 0, "missing": others, "pending": 0}
+    assert r["totals"][1] == {"births": 0, "nil": 1, "missing": others, "pending": 0}
+    assert r["outstanding"] == 2 * others
+
+    assert default_report_date([datetime(2026, 12, 25).date(), datetime(2027, 1, 1).date()],
+                               now=datetime(2026, 12, 30, tzinfo=SAST)).isoformat() == "2026-12-25"
+
+    # Facility users only see their own facility; the endpoint needs a sign-in.
+    r = client.get("/api/dashboard/reporting", params={"report_date": "2027-01-01", "district": "OR Tambo DM"}).json()
+    assert r["facility_count"] == 1 and r["districts"][0]["name"] == "Amathole DM"
+    assert client.get("/api/dashboard/reporting", params={"report_date": "2026-12-26"}).status_code == 422
+    client.post("/api/auth/logout")
+    assert client.get("/api/dashboard/reporting").status_code == 401
+
+    make_user("22222222", Role.admin, district="Amathole DM")
+    login(client, "22222222")
+    r = client.get("/api/dashboard/reporting", params={"district": "OR Tambo DM"}).json()
+    assert [d["name"] for d in r["districts"]] == ["Amathole DM"]  # forced to own district

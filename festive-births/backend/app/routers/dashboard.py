@@ -2,17 +2,18 @@
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import get_db
 from ..locations import DISTRICTS, FACILITY_TYPES, LOCATION_DATA
-from ..models import User
+from ..models import Role, User
 from ..schemas import BIRTH_MODES, TIME_SLOTS
 from ..security import any_user, audit
 from ..services.dashboard import compute_dashboard, filtered_query, last_updated
 from ..services.exports import dashboard_pdf
+from ..services.reporting import compute_reporting, default_report_date
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
@@ -64,3 +65,27 @@ def dashboard_report_pdf(
     db.commit()
     return Response(pdf, media_type="application/pdf",
                     headers={"Content-Disposition": 'attachment; filename="dashboard_report.pdf"'})
+
+
+@router.get("/dashboard/reporting")
+def reporting_compliance(
+    db: Session = Depends(get_db),
+    user: User = Depends(any_user),
+    report_date: date | None = None,
+    district: str | None = None,
+    local_municipality: str | None = None,
+    facility: str | None = None,
+):
+    """Per facility and time slot: births reported, NIL reported or nothing yet. Signed-in users only;
+    district users see their district and facility users their own facility."""
+    settings = get_settings()
+    if report_date and report_date not in settings.report_dates:
+        raise HTTPException(422, {"field_errors": {"report_date": "Not a reporting day for this season."}})
+    if user.role == Role.admin:
+        if district and district != user.district:
+            local_municipality = facility = None
+        district = user.district
+    elif user.role == Role.user:
+        district, local_municipality, facility = user.district, user.local_municipality, user.facility
+    return compute_reporting(db, report_date or default_report_date(settings.report_dates),
+                             district=district, local_municipality=local_municipality, facility=facility)

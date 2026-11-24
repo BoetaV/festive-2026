@@ -138,10 +138,10 @@ data_editor = require_roles(Role.superuser, Role.admin, Role.user)  # province d
 user_manager = require_roles(Role.superuser, Role.province, Role.admin)
 
 # Which roles each manager may create / manage.
-#   superuser -> anyone; province -> district users; district (admin) -> facility users in own district
+#   superuser -> anyone; province -> district and facility users; district (admin) -> facility users in own district
 MANAGEABLE_ROLES = {
     Role.superuser: {Role.superuser, Role.province, Role.admin, Role.user},
-    Role.province: {Role.admin},
+    Role.province: {Role.admin, Role.user},
     Role.admin: {Role.user},
 }
 
@@ -168,7 +168,7 @@ def can_manage_user(actor: User, target: User) -> bool:
     if actor.role == Role.superuser:
         return True
     if actor.role == Role.province:
-        return target.role == Role.admin
+        return target.role in (Role.admin, Role.user)
     return (
         actor.role == Role.admin
         and target.role == Role.user

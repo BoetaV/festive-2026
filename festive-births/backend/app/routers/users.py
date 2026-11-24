@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -16,11 +16,13 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def _scoped(stmt, actor: User):
+    """Who appears in the user list. Seeing a user does not mean you may change them (see can_manage_user)."""
     if actor.role == Role.superuser:
         return stmt
     if actor.role == Role.province:
-        return stmt.where(User.role == Role.admin)
-    return stmt.where(User.district == actor.district, User.role == Role.user)
+        return stmt.where(User.role.in_((Role.admin, Role.user)))
+    # District: every district user in the province (read-only) plus facility users in their own district
+    return stmt.where(or_(User.role == Role.admin, and_(User.role == Role.user, User.district == actor.district)))
 
 
 def _get_manageable(db: Session, actor: User, user_id: int) -> User:
@@ -33,7 +35,7 @@ def _get_manageable(db: Session, actor: User, user_id: int) -> User:
 def _validate(body: UserIn, actor: User, db: Session, existing: User | None = None) -> None:
     errors: dict[str, str] = {}
     if body.role not in MANAGEABLE_ROLES[actor.role]:
-        errors["role"] = ("Province users can only create district users." if actor.role == Role.province
+        errors["role"] = ("Province users can only create district and facility users." if actor.role == Role.province
                           else "District users can only create facility users.")
     if actor.role == Role.admin:
         body.district = actor.district

@@ -15,6 +15,7 @@ import { SexBarChart, SingleBarChart } from "@/components/charts"
 import { ChartCard, type Column } from "@/components/dashboard/chart-card"
 import { FilterBar, type DashFilters } from "@/components/dashboard/filters"
 import { AccessSection } from "@/components/dashboard/access-section"
+import { ReportingTable } from "@/components/dashboard/reporting-table"
 import { download, qs } from "@/lib/api"
 import { can, useAuth } from "@/lib/auth"
 import { fmtDate, fmtDateTime, fmtNum, fmtPct } from "@/lib/format"
@@ -222,6 +223,9 @@ export function DashboardView() {
               chart={<SexBarChart data={data.facility_types} horizontal labelWidth={120} />}
             />
           </div>
+
+          {/* Follow-up table: signed-in users only (names facilities that have not reported) */}
+          {user && <ReportingTable filters={filters} />}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <ChartCard

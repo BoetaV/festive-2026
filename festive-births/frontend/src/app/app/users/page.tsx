@@ -53,9 +53,9 @@ function UserDialog({
   const [lastOpen, setLastOpen] = useState<number | null | undefined>(undefined)
 
   const isAdmin = actor?.role === "admin"
-  // Superuser: any role. Province: district users only. District: facility users only.
+  // Superuser: any role. Province: district and facility users. District: facility users only.
   const roles: Role[] =
-    actor?.role === "province" ? ["admin"] : isAdmin ? ["user"] : ["superuser", "province", "admin", "user"]
+    actor?.role === "province" ? ["admin", "user"] : isAdmin ? ["user"] : ["superuser", "province", "admin", "user"]
 
   // Reset form whenever the dialog opens for a different target.
   const key = open ? (editing?.id ?? null) : undefined
@@ -213,7 +213,7 @@ export default function UsersPage() {
     <>
       <PageHeader
         title="Users"
-        description={actor?.role === "admin" ? `Facility users in ${actor.district}` : actor?.role === "province" ? "District users in the province" : "All accounts in the province"}
+        description={actor?.role === "admin" ? `Facility users in ${actor.district} and district users in the province (view only)` : actor?.role === "province" ? "District and facility users in the province" : "All accounts in the province"}
         actions={
           <>
             {can.exportUsers(actor) && (
@@ -269,6 +269,9 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{timeAgo(u.last_login_at)}</TableCell>
                   <TableCell>
+                    {!can.manageUser(actor, u) ? (
+                      <span className="text-xs whitespace-nowrap text-muted-foreground">View only</span>
+                    ) : (
                     <DropdownMenu>
                       <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Actions" />}>
                         <MoreHorizontalIcon />
@@ -286,6 +289,7 @@ export default function UsersPage() {
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

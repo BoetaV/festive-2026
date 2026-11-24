@@ -25,6 +25,13 @@ export const can = {
   manageUsers: (u: User | null) => !!u && u.role !== "user",
   security: (u: User | null) => !!u && u.role !== "user",
   exportUsers: (u: User | null) => u?.role === "superuser",
+  /** Mirrors the API's can_manage_user: who may edit, reset or remove `target`. */
+  manageUser: (actor: User | null, target: User) => {
+    if (!actor) return false
+    if (actor.role === "superuser") return true
+    if (actor.role === "province") return target.role === "admin" || target.role === "user"
+    return actor.role === "admin" && target.role === "user" && target.district === actor.district
+  },
 }
 
 export function hasRole(u: User | null, ...roles: Role[]) {

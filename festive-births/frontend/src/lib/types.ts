@@ -125,3 +125,18 @@ export const ROLE_LABEL: Record<Role, string> = {
   admin: "District User",
   user: "Facility User",
 }
+
+// ---------------------------------------------------------------- reporting per time slot
+export type SlotStatus = "births" | "nil" | "missing" | "pending"
+export type SlotCounts = Record<SlotStatus, number>
+export interface ReportingFacility {
+  name: string; facility_type: string | null; outstanding: number
+  slots: { status: SlotStatus; births: number }[]
+}
+export interface ReportingArea { name: string; facility_count: number; slots: SlotCounts[]; outstanding: number }
+export interface ReportingMunicipality extends ReportingArea { facilities: ReportingFacility[] }
+export interface ReportingDistrict extends ReportingArea { municipalities: ReportingMunicipality[] }
+export interface Reporting {
+  report_date: string; time_slots: string[]; as_at: string; slots_due: boolean[]
+  facility_count: number; totals: SlotCounts[]; outstanding: number; districts: ReportingDistrict[]
+}
