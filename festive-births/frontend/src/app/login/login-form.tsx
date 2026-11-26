@@ -12,6 +12,22 @@ import { api, ApiError } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import type { User } from "@/lib/types"
 
+/**
+ * Where to go after sign-in. Only paths inside the workspace are allowed: a bare "starts with /"
+ * check let "/\evil.example" through, which browsers read as "//evil.example" (an open redirect).
+ */
+function safeNext(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || /[\\\s]/.test(raw) || raw.startsWith("//")) return "/app"
+  try {
+    const url = new URL(raw, "https://placeholder.invalid")
+    if (url.origin !== "https://placeholder.invalid") return "/app"
+    const path = url.pathname + url.search + url.hash
+    return path === "/app" || path.startsWith("/app/") || path.startsWith("/app?") ? path : "/app"
+  } catch {
+    return "/app"
+  }
+}
+
 export function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
@@ -22,9 +38,7 @@ export function LoginForm() {
   const [error, setError] = useState<{ message: string; locked?: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // Only allow same-site relative redirects (prevents open redirects via ?next=).
-  const nextParam = params.get("next")
-  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/app"
+  const next = safeNext(params.get("next"))
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

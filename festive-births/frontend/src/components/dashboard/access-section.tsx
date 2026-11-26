@@ -37,8 +37,8 @@ const ROLES: { role: Role; scope: string; abilities: string }[] = [
 const CONTROLS = [
   { icon: FingerprintIcon, title: "Argon2id password hashing", desc: "Memory-hard hashing; passwords are never stored or logged." },
   { icon: LockIcon, title: "Account lockout", desc: "5 failed sign-ins locks the account for 15 minutes; IP rate limiting on top." },
-  { icon: KeyRoundIcon, title: "Forced password change", desc: "New and reset accounts start on the default password and must set a strong one at first sign-in." },
-  { icon: TimerIcon, title: "30-minute idle sessions", desc: "httpOnly, SameSite cookies with CSRF protection; sign out everywhere anytime." },
+  { icon: KeyRoundIcon, title: "Forced password change", desc: "New and reset accounts get a random one-time password and must set a strong one at first sign-in." },
+  { icon: TimerIcon, title: "30-minute idle sessions", desc: "httpOnly, SameSite cookies with CSRF protection; 12-hour maximum; sign out everywhere anytime." },
   { icon: HistoryIcon, title: "Full audit trail", desc: "Every sign-in, change, export and admin action is recorded." },
   { icon: ShieldCheckIcon, title: "Least-privilege scoping", desc: "Records are filtered server-side to your district or facility." },
 ]

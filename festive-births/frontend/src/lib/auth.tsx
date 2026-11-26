@@ -21,8 +21,10 @@ export function useAuth() {
 }
 
 export const can = {
-  edit: (u: User | null) => !!u && u.role !== "province",
+  edit: (u: User | null) => !!u && u.role !== "province" && !u.data_locked,
   manageUsers: (u: User | null) => !!u && u.role !== "user",
+  /** Create, edit or delete accounts: not once the season is locked (resets and unlocks still work). */
+  changeUsers: (u: User | null) => !!u && u.role !== "user" && !u.data_locked,
   security: (u: User | null) => !!u && u.role !== "user",
   exportUsers: (u: User | null) => u?.role === "superuser",
   /** Mirrors the API's can_manage_user: who may edit, reset or remove `target`. */

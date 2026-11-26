@@ -9,7 +9,13 @@ import type { NextRequest } from "next/server"
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8010"
 
 // Hop-by-hop / host-specific headers that must not be forwarded.
-const DROP_REQUEST = new Set(["host", "connection", "content-length", "accept-encoding"])
+// Client-supplied forwarding headers are dropped too: only the proxy decides what the API sees as
+// the client's address, host and scheme.
+const DROP_REQUEST = new Set([
+  "host", "connection", "content-length", "accept-encoding", "transfer-encoding", "upgrade",
+  "forwarded", "x-forwarded-host", "x-forwarded-proto", "x-forwarded-port", "x-real-ip",
+])
+const MAX_BODY_BYTES = 1_000_000
 const DROP_RESPONSE = new Set(["content-encoding", "content-length", "transfer-encoding", "connection", "set-cookie"])
 
 async function forward(req: NextRequest) {
@@ -28,12 +34,19 @@ async function forward(req: NextRequest) {
   if (ip) headers.set("x-forwarded-for", ip)
 
   const hasBody = !["GET", "HEAD"].includes(req.method)
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return Response.json({ detail: "Request body too large" }, { status: 413 })
+  }
+  const body = hasBody ? await req.arrayBuffer() : undefined
+  if (body && body.byteLength > MAX_BODY_BYTES) {
+    return Response.json({ detail: "Request body too large" }, { status: 413 })
+  }
   let upstream: Response
   try {
     upstream = await fetch(url, {
       method: req.method,
       headers,
-      body: hasBody ? await req.arrayBuffer() : undefined,
+      body,
       redirect: "manual",
       cache: "no-store",
     })

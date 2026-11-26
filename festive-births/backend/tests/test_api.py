@@ -162,7 +162,7 @@ def test_exports(client):
 
 
 # ------------------------------------------------------------------ user management
-def test_admin_creates_facility_user_with_default_password_in_own_district(client):
+def test_admin_creates_facility_user_with_random_temp_password_in_own_district(client):
     make_user("12345678", Role.admin, district="Amathole DM")
     login(client, "12345678")
     body = {"first_name": "New", "last_name": "Clerk", "persal_number": "87654321", "role": "user",
@@ -172,16 +172,17 @@ def test_admin_creates_facility_user_with_default_password_in_own_district(clien
     created = r.json()
     assert created["user"]["district"] == "Amathole DM"  # forced to admin's district
     assert created["user"]["must_change_password"] is True
-    assert created["temporary_password"] == "Password1"
+    temp = created["temporary_password"]
+    assert temp != "Password1" and len(temp) >= 12
 
     assert client.post("/api/users", json={**body, "persal_number": "11112222", "role": "admin"}).status_code == 422
 
     client.post("/api/auth/logout")
-    assert login(client, "87654321", "Password1").status_code == 200
-    # Must change it before anything else, and may not keep Password1.
+    assert login(client, "87654321", "Password1").status_code == 401  # no shared default password
+    assert login(client, "87654321", temp).status_code == 200
+    # Must change it before anything else, and may not keep the temporary one.
     assert client.get("/api/deliveries").status_code == 403
-    r = client.post("/api/auth/change-password",
-                    json={"current_password": "Password1", "new_password": "Password1"})
+    r = client.post("/api/auth/change-password", json={"current_password": temp, "new_password": temp})
     assert r.status_code == 422
 
 
@@ -194,7 +195,7 @@ def test_province_creates_and_resets_district_and_facility_users(client):
                 "district": "Amathole DM"}
     r = client.post("/api/users", json=district)
     assert r.status_code == 201, r.text
-    assert r.json()["temporary_password"] == "Password1"
+    first_temp = r.json()["temporary_password"]
 
     facility = {**district, "persal_number": "55555555", "role": "user", **FACILITY}
     r2 = client.post("/api/users", json=facility)
@@ -204,8 +205,10 @@ def test_province_creates_and_resets_district_and_facility_users(client):
     listed = {u["persal_number"] for u in client.get("/api/users").json()["items"]}
     assert listed == {"11111111", "44444444", "55555555"}  # not the superuser
 
+    temps = {first_temp, r2.json()["temporary_password"]}
     for uid in (r.json()["user"]["id"], r2.json()["user"]["id"]):
-        assert client.post(f"/api/users/{uid}/reset-password").json()["temporary_password"] == "Password1"
+        temps.add(client.post(f"/api/users/{uid}/reset-password").json()["temporary_password"])
+    assert len(temps) == 4  # every issue is a fresh random password
 
 
 def test_district_sees_district_users_read_only(client):

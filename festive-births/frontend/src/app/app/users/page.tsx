@@ -104,7 +104,7 @@ function UserDialog({
         <DialogHeader>
           <DialogTitle>{editing ? "Edit user" : "Create user"}</DialogTitle>
           <DialogDescription>
-            {editing ? "Update details, role or allocation." : "The account starts with the default password Password1. The user must change it at first sign-in."}
+            {editing ? "Update details, role or allocation." : "A random one-time password is shown after saving. Give it to the user in person or by phone; they must change it at first sign-in."}
           </DialogDescription>
         </DialogHeader>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save() }}>
@@ -224,7 +224,7 @@ export default function UsersPage() {
             <Button variant="outline" onClick={() => download("/api/users/application-form", "user_account_application_form.pdf").catch(() => toast.error("Download failed"))}>
               <FileSignatureIcon /> Application form
             </Button>
-            <Button onClick={() => setDialog({ open: true, editing: null })}><PlusIcon /> New user</Button>
+            {can.changeUsers(actor) && <Button onClick={() => setDialog({ open: true, editing: null })}><PlusIcon /> New user</Button>}
           </>
         }
       />
@@ -277,11 +277,11 @@ export default function UsersPage() {
                         <MoreHorizontalIcon />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-52">
-                        <DropdownMenuItem onClick={() => setDialog({ open: true, editing: u })}><PencilIcon /> Edit</DropdownMenuItem>
+                        {can.changeUsers(actor) && <DropdownMenuItem onClick={() => setDialog({ open: true, editing: u })}><PencilIcon /> Edit</DropdownMenuItem>}
                         <DropdownMenuItem onClick={() => action(u, "reset-password", "")}><KeyRoundIcon /> Reset password</DropdownMenuItem>
                         {isLocked(u) && <DropdownMenuItem onClick={() => action(u, "unlock", "Account unlocked")}><LockOpenIcon /> Unlock account</DropdownMenuItem>}
                         <DropdownMenuItem onClick={() => action(u, "revoke-sessions", "Sessions revoked")}><LogOutIcon /> Sign out all sessions</DropdownMenuItem>
-                        {u.id !== actor?.id && (
+                        {u.id !== actor?.id && can.changeUsers(actor) && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant="destructive" onClick={() => setToDelete(u)}><Trash2Icon /> Delete</DropdownMenuItem>
@@ -316,9 +316,9 @@ export default function UsersPage() {
       <Dialog open={!!temp} onOpenChange={(o) => !o && setTemp(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Default password set</DialogTitle>
+            <DialogTitle>One-time password</DialogTitle>
             <DialogDescription>
-              {temp?.user.first_name} {temp?.user.last_name} can now sign in with their Persal number and this password. They must change it at first sign-in.
+              {temp?.user.first_name} {temp?.user.last_name} can now sign in with their Persal number and this password. It is shown only once: give it to them in person or by phone, never by e-mail or group chat. They must change it at first sign-in.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3">

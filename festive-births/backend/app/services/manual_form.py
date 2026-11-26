@@ -7,6 +7,7 @@ in the ECDoH green/gold theme (landscape A4 so the register has room for handwri
 
 import io
 from datetime import date
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -103,7 +104,7 @@ def _fields(cells: list[tuple[str, object]], widths: list[float], value_h: float
     for i, ((label, v), w) in enumerate(zip(cells, widths)):
         last = i == len(cells) - 1
         labels.append(Paragraph(label.upper(), S["label"]))
-        values.append(Paragraph(v, S["value"]) if isinstance(v, str) else (v if v is not None else ""))
+        values.append(Paragraph(escape(v), S["value"]) if isinstance(v, str) else (v if v is not None else ""))
         col_w.append(w if last else w - gap)
         if not last:
             labels.append("")
@@ -332,7 +333,7 @@ def manual_form_pdf(*, district: str | None, local_municipality: str | None, fac
             Spacer(1, 5 * mm),
             _section("E", "Sign-off"), Spacer(1, 2 * mm), _signoff(),
             Spacer(1, 2 * mm),
-            Paragraph(f"Form generated from the Festive Births system by {generated_by}. "
+            Paragraph(f"Form generated from the Festive Births system by {escape(generated_by)}. "
                       "Do not photocopy a pre-filled form for a different facility or day.", S["small"]),
         ]),
     ]

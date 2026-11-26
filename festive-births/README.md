@@ -22,13 +22,13 @@ festive-births/
 docker compose up -d --build     # Postgres + API + web
 ```
 
-Open **http://localhost:3010** and sign in with Persal **00000001**, password **Password1**. You will be asked to set a new password.
+Open **http://localhost:3010** and sign in with Persal **00000001** and the one-time password printed in the backend log (`docker compose logs backend | grep "one-time password"`). You will be asked to set a new password.
 
 Ports: **web 3010 · API 8010 · Postgres 5445**. `docker compose down` stops everything; data is kept in the `pgdata` volume.
 
 ## Users and roles
 
-Everyone signs in with their **8-digit Persal number**. New and reset accounts get the default password **`Password1`** and must change it to a strong password at first sign-in (Password1 itself is not accepted as the new password).
+Everyone signs in with their **8-digit Persal number**. New and reset accounts get a **random one-time password**, shown once to the administrator who created or reset the account, and must change it to a strong password at first sign-in. Hand it over in person or by phone.
 
 | Role | Created by | Sees | Can create |
 |---|---|---|---|
@@ -57,7 +57,9 @@ Tests: `cd backend && .venv/Scripts/python -m pytest`
 ### Security model
 
 - Argon2id password hashing; strong-password policy (8+ chars, mixed case, digit).
-- New and reset accounts start on the default password `Password1` (`DEFAULT_PASSWORD`). Users must change it before anything else works.
+- New and reset accounts get a random one-time password. Users must change it before anything else works.
+- Sessions: 30-minute sliding idle timeout, 12-hour absolute maximum (`SESSION_MAX_HOURS`).
+- **Season lock:** from **10 January 2027, 00:00 SAST** (`DATA_LOCK_AT`) the database is read-only. Births, NIL reports and user accounts can no longer be added, changed or deleted (the API answers 423 and the UI hides editing). Dashboards, reports and exports keep working, as do sign-in, own password changes and administrator reset password / unlock / sign out sessions. To reopen for corrections, set `DATA_LOCK_AT` to a later time or `off` on the backend service and redeploy.
 - Lockout after 5 failed sign-ins (15 min), plus a per-IP rate limit; identical errors for unknown vs wrong password.
 - Session = signed JWT in an **httpOnly, SameSite=Lax** cookie (Secure in production), 30-minute sliding idle timeout. A password change, deactivation or "sign out everywhere" revokes every session.
 - CSRF: every write must carry `X-CSRF-Protection: 1`, which cross-site forms cannot send.
@@ -74,7 +76,7 @@ Create one Railway project with **three services** from this repo:
    - `HOST=::` and `PORT=8000`: listen on IPv6 too, which Railway's private network uses
    - `DATABASE_URL=${{Postgres.DATABASE_URL}}`
    - `SECRET_KEY=` a random value: `python -c "import secrets; print(secrets.token_urlsafe(48))"`
-   - `SUPERUSER_PERSAL`: your first admin account (created on first boot with `Password1`; must be changed at first sign-in)
+   - `SUPERUSER_PERSAL`: your first admin account (created on first boot; set `SUPERUSER_PASSWORD` too, or read the random one-time password from the deploy log; must be changed at first sign-in)
    - `REPORT_DATES=["2026-12-25","2027-01-01"]`: set this season's reporting days
    - **Do not give this service a public domain.** Only the frontend should reach it, over Railway's private network.
 3. **frontend**: root directory `frontend`. Variables:

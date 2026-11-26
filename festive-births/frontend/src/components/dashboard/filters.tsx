@@ -19,10 +19,13 @@ export function FilterBar({
   meta,
   value,
   onChange,
+  allowFacility = true,
 }: {
   meta: Meta | undefined
   value: DashFilters
   onChange: (f: DashFilters) => void
+  /** Anonymous visitors can't drill down to a single facility. */
+  allowFacility?: boolean
 }) {
   const munis = value.district ? (meta?.municipalities[value.district] ?? []) : []
   const facilities = value.local_municipality ? (meta?.facilities[value.local_municipality] ?? []) : []
@@ -55,9 +58,9 @@ export function FilterBar({
       <NativeSelect
         aria-label="Facility"
         value={value.facility}
-        placeholder="All facilities"
-        options={facilities}
-        disabled={!value.local_municipality}
+        placeholder={allowFacility ? "All facilities" : "Sign in for facility figures"}
+        options={allowFacility ? facilities : []}
+        disabled={!allowFacility || !value.local_municipality}
         onChange={(e) => onChange({ ...value, facility: e.target.value })}
       />
       <Button variant="outline" disabled={!active} onClick={() => onChange(EMPTY_FILTERS)} className="col-span-2 md:col-span-1">

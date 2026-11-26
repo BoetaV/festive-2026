@@ -39,7 +39,8 @@ export function DashboardView() {
     report_date: params.get("report_date") ?? "",
     district: params.get("district") ?? "",
     local_municipality: params.get("local_municipality") ?? "",
-    facility: params.get("facility") ?? "",
+    // Facility-level figures need a signed-in account (small numbers could identify a patient).
+    facility: user ? (params.get("facility") ?? "") : "",
   }
   const query = qs({ ...filters })
   const { data: meta } = useSWR<Meta>("/api/meta")
@@ -138,7 +139,7 @@ export function DashboardView() {
         </div>
       </section>
 
-      <FilterBar meta={meta} value={filters} onChange={setFilters} />
+      <FilterBar meta={meta} value={filters} onChange={setFilters} allowFacility={!!user} />
 
       {error && <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">Could not load the dashboard: {error.message}</p>}
 
@@ -227,7 +228,8 @@ export function DashboardView() {
           {/* Follow-up table: signed-in users only (names facilities that have not reported) */}
           {user && <ReportingTable filters={filters} />}
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          {/* Per-facility teen and multiple-birth counts: signed-in users only (re-identification risk) */}
+          {user && <div className="grid gap-4 lg:grid-cols-2">
             <ChartCard
               title="Teenage pregnancies by facility"
               description="Babies born to mothers aged 10–19"
@@ -257,7 +259,7 @@ export function DashboardView() {
               ]}
               emptyText="No multiple births recorded for this selection."
             />
-          </div>
+          </div>}
         </>
       )}
 

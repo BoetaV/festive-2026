@@ -5,6 +5,7 @@ _db = os.path.join(tempfile.mkdtemp(), "test.db")
 os.environ["DATABASE_URL"] = f"sqlite:///{_db}"
 os.environ["SECRET_KEY"] = "test-secret-key-that-is-at-least-32-bytes"
 os.environ.pop("SUPERUSER_PERSAL", None)
+os.environ["DATA_LOCK_AT"] = "off"  # tests must not depend on today's date; test_data_lock sets it explicitly
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

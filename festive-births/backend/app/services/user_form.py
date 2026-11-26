@@ -98,8 +98,9 @@ def user_application_pdf() -> bytes:
     intro = _panel([Paragraph(
         "<b>Complete this form to get access to the Festive Births system.</b> Write clearly in block letters. "
         "Your supervisor must sign section D before you hand the form to your <b>district office</b>, which "
-        "creates the account. You sign in with your <b>Persal number</b> and the default password, which you "
-        "must change the first time you sign in.", S["body"])], background=GOLD_TINT)
+        "creates the account. The district office gives you a <b>one-time password</b> in person or by "
+        "phone; you sign in with your <b>Persal number</b> and that password, and must change it the first "
+        "time you sign in. Never share it.", S["body"])], background=GOLD_TINT)
 
     titles = _ticks([(t, False) for t in ("Mr", "Ms", "Mrs", "Miss", "Dr", "Prof")], gap=4 * mm, style="cell_b")
     access = Table([[CheckBox(True), Paragraph("Facility user", S["cell_b"]),

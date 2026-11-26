@@ -10,7 +10,8 @@ from ..models import User, as_utc
 from ..schemas import ChangePasswordIn, LoginIn, UserOut
 from ..security import (
     any_user, audit, clear_session_cookie, client_ip, get_optional_user, hash_password,
-    login_limiter, password_hasher, password_problems, set_session_cookie, verify_password,
+    login_limiter, password_change_limiter, password_hasher, password_problems, set_session_cookie,
+    verify_password,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -92,10 +93,17 @@ def me(user: User = Depends(any_user)):
 @router.post("/change-password", response_model=UserOut)
 def change_password(body: ChangePasswordIn, request: Request, response: Response,
                     db: Session = Depends(get_db), user: User = Depends(any_user)):
+    key = f"user:{user.id}"
+    if not password_change_limiter.allow(key):
+        audit(db, request, "password_change_rate_limited", user=user, success=False)
+        db.commit()
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS,
+                            "Too many incorrect attempts. Wait 15 minutes and try again.")
     if not verify_password(body.current_password, user.hashed_password):
         audit(db, request, "password_change_failed", user=user, success=False, detail="wrong current password")
         db.commit()
         raise HTTPException(422, {"field_errors": {"current_password": "Current password is incorrect."}})
+    password_change_limiter.forget(key)
     if body.new_password == body.current_password:
         raise HTTPException(422, {"field_errors": {"new_password": "New password must differ from the current one."}})
     if problems := password_problems(body.new_password, user):
@@ -107,7 +115,7 @@ def change_password(body: ChangePasswordIn, request: Request, response: Response
     user.token_version += 1  # signs out every other session
     audit(db, request, "password_changed", user=user)
     db.commit()
-    set_session_cookie(response, user)
+    set_session_cookie(response, user, getattr(request.state, "auth_time", None))
     return user
 
 

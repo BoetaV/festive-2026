@@ -62,6 +62,18 @@ def _register_fonts() -> dict[str, str]:
 FONT = _register_fonts()
 
 
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _defuse(cell) -> None:
+    """Spreadsheet (formula) injection guard: user-typed text such as "=HYPERLINK(...)" must
+    land in Excel as plain text, never as a live formula. openpyxl stores any string starting
+    with "=" as a formula, and Excel re-evaluates + - @ when a cell is edited."""
+    if isinstance(cell.value, str) and cell.value.startswith(FORMULA_START):
+        cell.value = "'" + cell.value
+        cell.data_type = "s"
+
+
 def _workbook(title: str, headers: list[str], rows: Iterable[list]) -> bytes:
     wb = Workbook()
     ws = wb.active
@@ -73,6 +85,8 @@ def _workbook(title: str, headers: list[str], rows: Iterable[list]) -> bytes:
         cell.alignment = Alignment(horizontal="center")
     for row in rows:
         ws.append(row)
+        for cell in ws[ws.max_row]:
+            _defuse(cell)
     for col in ws.columns:
         ws.column_dimensions[col[0].column_letter].width = min(
             60, max(len(str(c.value or "")) for c in col) + 2

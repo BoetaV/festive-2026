@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Field, NativeSelect } from "@/components/form-controls"
 import { api, ApiError } from "@/lib/api"
-import { useAuth } from "@/lib/auth"
+import { can, useAuth } from "@/lib/auth"
 import { fmtDate } from "@/lib/format"
 import type { Delivery, Meta } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -132,6 +132,8 @@ export function DeliveryForm({ initial }: { initial?: Delivery }) {
       onSubmit={(e) => { e.preventDefault(); submit(false) }}
       noValidate
     >
+      {/* Read-only once the season is locked (or for roles that can't capture); the API enforces it too. */}
+      <fieldset disabled={!can.edit(user)} className="contents">
       {/* ---------- Location & reporting ---------- */}
       <Card>
         <CardHeader>
@@ -307,8 +309,10 @@ export function DeliveryForm({ initial }: { initial?: Delivery }) {
         </>
       )}
 
+      </fieldset>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={() => router.back()}>{can.edit(user) ? "Cancel" : "Back"}</Button>
+        {can.edit(user) && <>
         {!initial && (
           <Button type="button" variant="outline" disabled={busy} onClick={() => submit(true)}>
             Save & capture another
@@ -318,6 +322,7 @@ export function DeliveryForm({ initial }: { initial?: Delivery }) {
           {busy && <Loader2Icon className="animate-spin" />}
           {initial ? "Update record" : f.no_births_to_report ? "Submit NIL report" : "Save delivery"}
         </Button>
+        </>}
       </div>
     </form>
   )

@@ -41,6 +41,8 @@ def _validate(body: UserIn, actor: User, db: Session, existing: User | None = No
         body.district = actor.district
     if existing and existing.id == actor.id and body.role != actor.role:
         errors["role"] = "You cannot change your own role."
+    if existing and existing.id == actor.id and not body.is_active:
+        errors["is_active"] = "You cannot deactivate your own account."
 
     needs = {Role.admin: ("district",), Role.user: ("district", "local_municipality", "facility")}
     for f in needs.get(body.role, ()):

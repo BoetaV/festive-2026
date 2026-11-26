@@ -19,6 +19,8 @@ export interface User {
   locked_until: string | null
   failed_login_attempts: number
   created_at: string
+  /** The season's data is read-only (after DATA_LOCK_AT). */
+  data_locked: boolean
 }
 
 export interface Paged<T> {
@@ -66,6 +68,8 @@ export interface Meta {
   report_dates: string[]
   time_slots: string[]
   birth_modes: string[]
+  data_lock_at: string | null
+  data_locked: boolean
 }
 
 export interface MF {

@@ -1,7 +1,10 @@
 from datetime import date, datetime, time
+import re
 from typing import Generic, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field, field_validator
+
+from .config import get_settings
 
 from .models import Role
 
@@ -17,6 +20,32 @@ BIRTH_MODES = [
 ]
 
 
+# A person's name: starts with a letter (any script), then letters, spaces, apostrophes, hyphens or
+# full stops. Rejects markup ("<b>"), spreadsheet formulas ("=HYPERLINK(...)") and control characters,
+# because names flow into Excel exports and PDF forms.
+_NAME_RE = re.compile(r"^[^\W\d_](?:[^\W\d_]|[ '’.\-])*$")
+NAME_ERROR = "Use letters, spaces, apostrophes, hyphens or full stops only, starting with a letter."
+
+
+def check_name(v: str | None) -> str | None:
+    if v is None:
+        return v
+    v = " ".join(v.split())
+    if v and not _NAME_RE.fullmatch(v):
+        raise ValueError(NAME_ERROR)
+    return v
+
+
+def check_free_text(v: str | None) -> str | None:
+    """Free text (e.g. a job title) may not start like a spreadsheet formula or hold control characters."""
+    if v is None:
+        return v
+    v = " ".join(v.split())
+    if v and (v[0] in "=+-@" or any(ord(c) < 32 for c in v)):
+        raise ValueError("May not start with = + - or @.")
+    return v
+
+
 class ORM(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,8 +57,9 @@ class LoginIn(BaseModel):
 
 
 class ChangePasswordIn(BaseModel):
-    current_password: str
-    new_password: str = Field(max_length=256)
+    # Bounded so a multi-megabyte "password" can't tie up the Argon2 hasher.
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=1, max_length=256)
 
 
 class UserOut(ORM):
@@ -52,6 +82,12 @@ class UserOut(ORM):
     failed_login_attempts: int
     created_at: datetime
 
+    @computed_field
+    @property
+    def data_locked(self) -> bool:
+        """True once the season's data is read-only (DATA_LOCK_AT); the UI hides editing controls."""
+        return get_settings().data_is_locked()
+
 
 # ---------------------------------------------------------------- users
 class UserIn(BaseModel):
@@ -73,6 +109,16 @@ class UserIn(BaseModel):
     @classmethod
     def _blank_to_none(cls, v):
         return v or None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def _names(cls, v):
+        return check_name(v)
+
+    @field_validator("designation")
+    @classmethod
+    def _designation(cls, v):
+        return check_free_text(v)
 
 
 class UserCreated(BaseModel):
@@ -128,6 +174,11 @@ class DeliveryIn(BaseModel):
     @classmethod
     def _blank_to_none(cls, v):
         return v.strip() or None if isinstance(v, str) else v
+
+    @field_validator("mother_name", "mother_surname")
+    @classmethod
+    def _names(cls, v):
+        return check_name(v)
 
 
 class DeliveryOut(ORM):
